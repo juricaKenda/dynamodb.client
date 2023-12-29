@@ -88,8 +88,11 @@ func (q *QueryHelper) buildReq(PK string, skCondition SortKeyCondition, SK strin
 	}
 
 	return &dynamodb.QueryInput{
-		TableName:              aws.String(q.client.table),
-		KeyConditionExpression: spec.KeyCondition(),
+		TableName: aws.String(q.client.table),
+
+		ExpressionAttributeNames:  spec.Names(),
+		ExpressionAttributeValues: spec.Values(),
+		KeyConditionExpression:    spec.KeyCondition(),
 	}, nil
 }
 
