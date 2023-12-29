@@ -15,7 +15,7 @@ type QueryHelper struct {
 }
 
 // Query method
-func (c *Client) Query(values interface{}, PK, skCondition SortKeyCondition, SK string) error {
+func (c *Client) Query(values interface{}, PK string, skCondition SortKeyCondition, SK string) error {
 	helper := newHelper(c)
 	req, err := helper.buildReq(PK, skCondition, SK)
 	if err != nil {
@@ -71,7 +71,7 @@ func (q *QueryHelper) nextQuery(values interface{}, req *dynamodb.QueryInput) (m
 	return result.LastEvaluatedKey, nil
 }
 
-func (q *QueryHelper) buildReq(PK, skCondition SortKeyCondition, SK string) (*dynamodb.QueryInput, error) {
+func (q *QueryHelper) buildReq(PK string, skCondition SortKeyCondition, SK string) (*dynamodb.QueryInput, error) {
 	exp := expression.NewBuilder()
 	keyCondition := expression.Key(consts.PK).Equal(expression.Value(PK))
 	switch skCondition {
