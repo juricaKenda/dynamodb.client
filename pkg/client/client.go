@@ -13,10 +13,11 @@ type Client struct {
 }
 
 // New client constructor
-func New(table, region, endpoint string) (*Client, error) {
+func New(table, region, endpoint string, auth *Auth) (*Client, error) {
 	client := dynamodb.New(dynamodb.Options{
 		BaseEndpoint: aws.String(endpoint),
 		Region:       region,
+		Credentials:  auth,
 	})
 
 	return &Client{
@@ -38,4 +39,18 @@ func pingTable(db *dynamodb.Client, expectedTable string) error {
 	}
 
 	return errors.New("table not found in DynamoDB")
+}
+
+type Auth struct {
+	// AWS Access key ID
+	AccessKeyID string
+	// AWS Secret Access Key
+	SecretAccessKey string
+}
+
+func (a *Auth) Retrieve(_ context.Context) (aws.Credentials, error) {
+	return aws.Credentials{
+		AccessKeyID:     a.AccessKeyID,
+		SecretAccessKey: a.SecretAccessKey,
+	}, nil
 }
