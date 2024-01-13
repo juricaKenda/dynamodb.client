@@ -23,6 +23,7 @@ jobs:
       - name: Semantic Release
         run: |
           docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
+          docker pull ghcr.io/semantic-release/semantic-release:latest
           docker run \
             -e GH_TOKEN=${{ secrets.GITHUB_TOKEN }} \
             -v $(pwd):/app \
