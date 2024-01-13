@@ -3,7 +3,7 @@ name: Semantic Versioning
 on:
   push:
     branches:
-      - main
+      - master
 
 jobs:
   release:
@@ -29,4 +29,4 @@ jobs:
             ghcr.io/semantic-release/semantic-release
 
       - name: Push new version tag
-        run: git push --follow-tags origin main
+        run: git push --follow-tags origin master
