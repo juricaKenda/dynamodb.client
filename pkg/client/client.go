@@ -1,30 +1,23 @@
 package client
 
 import (
+	"context"
 	"errors"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 )
 
 type Client struct {
-	dynamo *dynamodb.DynamoDB
+	dynamo *dynamodb.Client
 	table  string
 }
 
 // New client constructor
 func New(table, region, endpoint string) (*Client, error) {
-	session, err := session.NewSessionWithOptions(
-		session.Options{
-			Config: aws.Config{
-				Endpoint: aws.String(endpoint),
-				Region:   aws.String(region),
-			},
-		})
-	if err != nil {
-		return nil, err
-	}
-	client := dynamodb.New(session)
+	client := dynamodb.New(dynamodb.Options{
+		BaseEndpoint: aws.String(endpoint),
+		Region:       region,
+	})
 
 	return &Client{
 		table:  table,
@@ -32,14 +25,14 @@ func New(table, region, endpoint string) (*Client, error) {
 	}, pingTable(client, table)
 }
 
-func pingTable(db *dynamodb.DynamoDB, tableName string) error {
-	tables, err := db.ListTables(&dynamodb.ListTablesInput{})
+func pingTable(db *dynamodb.Client, expectedTable string) error {
+	tables, err := db.ListTables(context.Background(), &dynamodb.ListTablesInput{})
 	if err != nil {
 		return err
 	}
 
 	for _, name := range tables.TableNames {
-		if tableName == *name {
+		if name == expectedTable {
 			return nil
 		}
 	}

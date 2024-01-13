@@ -1,28 +1,30 @@
 package client
 
 import (
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
+	"context"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/juricaKenda/dynamodb.client/pkg/client/consts"
 )
 
 // Set method
 func (c *Client) Set(PK, SK string, input interface{}) error {
-	dynamoModel, err := dynamodbattribute.MarshalMap(input)
+	dynamoModel, err := attributevalue.MarshalMap(input)
 	if err != nil {
 		return err
 	}
 
-	dynamoModel[consts.PK] = &dynamodb.AttributeValue{S: aws.String(PK)}
-	dynamoModel[consts.SK] = &dynamodb.AttributeValue{S: aws.String(SK)}
+	dynamoModel[consts.PK] = &types.AttributeValueMemberS{Value: PK}
+	dynamoModel[consts.SK] = &types.AttributeValueMemberS{Value: SK}
 
 	request := &dynamodb.PutItemInput{
 		TableName: aws.String(c.table),
 		Item:      dynamoModel,
 	}
 
-	_, err = c.dynamo.PutItem(request)
+	_, err = c.dynamo.PutItem(context.Background(), request)
 	return err
 }
 
@@ -30,13 +32,13 @@ func (c *Client) Set(PK, SK string, input interface{}) error {
 func (c *Client) Get(PK, SK string, input interface{}) error {
 	req := &dynamodb.GetItemInput{
 		TableName: aws.String(c.table),
-		Key: map[string]*dynamodb.AttributeValue{
-			consts.PK: {S: aws.String(PK)},
-			consts.SK: {S: aws.String(SK)},
+		Key: map[string]types.AttributeValue{
+			consts.PK: &types.AttributeValueMemberS{Value: PK},
+			consts.SK: &types.AttributeValueMemberS{Value: SK},
 		},
 	}
 
-	result, err := c.dynamo.GetItem(req)
+	result, err := c.dynamo.GetItem(context.Background(), req)
 	if err != nil {
 		return err
 	}
@@ -45,19 +47,19 @@ func (c *Client) Get(PK, SK string, input interface{}) error {
 		return nil
 	}
 
-	return dynamodbattribute.UnmarshalMap(result.Item, input)
+	return attributevalue.UnmarshalMap(result.Item, input)
 }
 
 // Del method
 func (c *Client) Del(PK, SK string) error {
 	request := &dynamodb.DeleteItemInput{
 		TableName: aws.String(c.table),
-		Key: map[string]*dynamodb.AttributeValue{
-			consts.PK: {S: aws.String(PK)},
-			consts.SK: {S: aws.String(SK)},
+		Key: map[string]types.AttributeValue{
+			consts.PK: &types.AttributeValueMemberS{Value: PK},
+			consts.SK: &types.AttributeValueMemberS{Value: SK},
 		},
 	}
 
-	_, err := c.dynamo.DeleteItem(request)
+	_, err := c.dynamo.DeleteItem(context.Background(), request)
 	return err
 }
