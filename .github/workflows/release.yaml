@@ -1,0 +1,32 @@
+name: Semantic Versioning
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: '1.17'
+
+      - name: Install dependencies
+        run: go mod download
+
+      - name: Semantic Release
+        run: |
+          docker run \
+            -e GH_TOKEN=${{ secrets.GITHUB_TOKEN }} \
+            -v $(pwd):/app \
+            -w /app \
+            ghcr.io/semantic-release/semantic-release
+
+      - name: Push new version tag
+        run: git push --follow-tags origin main
