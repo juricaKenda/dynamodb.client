@@ -16,8 +16,9 @@ func (c *Client) Set(PK, SK string, input interface{}) error {
 		return err
 	}
 
-	dynamoModel[consts.PK] = &types.AttributeValueMemberS{Value: PK}
-	dynamoModel[consts.SK] = &types.AttributeValueMemberS{Value: SK}
+	for key, val := range keys(PK, SK) {
+		dynamoModel[key] = val
+	}
 
 	request := &dynamodb.PutItemInput{
 		TableName: aws.String(c.table),
@@ -32,10 +33,7 @@ func (c *Client) Set(PK, SK string, input interface{}) error {
 func (c *Client) Get(PK, SK string, input interface{}) error {
 	req := &dynamodb.GetItemInput{
 		TableName: aws.String(c.table),
-		Key: map[string]types.AttributeValue{
-			consts.PK: &types.AttributeValueMemberS{Value: PK},
-			consts.SK: &types.AttributeValueMemberS{Value: SK},
-		},
+		Key:       keys(PK, SK),
 	}
 
 	result, err := c.dynamo.GetItem(context.Background(), req)
@@ -54,12 +52,16 @@ func (c *Client) Get(PK, SK string, input interface{}) error {
 func (c *Client) Del(PK, SK string) error {
 	request := &dynamodb.DeleteItemInput{
 		TableName: aws.String(c.table),
-		Key: map[string]types.AttributeValue{
-			consts.PK: &types.AttributeValueMemberS{Value: PK},
-			consts.SK: &types.AttributeValueMemberS{Value: SK},
-		},
+		Key:       keys(PK, SK),
 	}
 
 	_, err := c.dynamo.DeleteItem(context.Background(), request)
 	return err
+}
+
+func keys(PK string, SK string) map[string]types.AttributeValue {
+	return map[string]types.AttributeValue{
+		consts.PK: &types.AttributeValueMemberS{Value: PK},
+		consts.SK: &types.AttributeValueMemberS{Value: SK},
+	}
 }
