@@ -9,7 +9,11 @@ import (
 	"github.com/juricaKenda/dynamodb.client/pkg/client/consts"
 )
 
-// Set method
+/*
+Set item under a given PK + SK combination. If an item already exists, it will be overwritten with new values.
+The `input` must have json tags in order to be properly processed and stored.
+It also MUST NOT contain any of the following tags {"PK", "SK"} as those are reserved by the library.
+*/
 func (c *Client) Set(PK, SK string, input interface{}) error {
 	dynamoModel, err := attributevalue.MarshalMap(input)
 	if err != nil {
@@ -29,7 +33,10 @@ func (c *Client) Set(PK, SK string, input interface{}) error {
 	return err
 }
 
-// Get method
+/*
+Get item stored under a given PK + SK combination. An `input` is an address of a container in which result will be stored.
+If there is no item to return, the input will remain unmodified and no errors will be returned.
+*/
 func (c *Client) Get(PK, SK string, input interface{}) error {
 	req := &dynamodb.GetItemInput{
 		TableName: aws.String(c.table),
@@ -48,7 +55,10 @@ func (c *Client) Get(PK, SK string, input interface{}) error {
 	return attributevalue.UnmarshalMap(result.Item, input)
 }
 
-// Del method
+/*
+Del item under a given PK + SK combination.
+If there are no items to delete, the call will still return no errors.
+*/
 func (c *Client) Del(PK, SK string) error {
 	request := &dynamodb.DeleteItemInput{
 		TableName: aws.String(c.table),
