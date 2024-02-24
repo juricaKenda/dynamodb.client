@@ -9,11 +9,12 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/juricaKenda/dynamodb.client/pkg/client/consts"
+	"github.com/juricaKenda/dynamodb.client/pkg/client/consts/query"
 )
 
-// QueryAll returns all items from the table under a given PK + skCondition + SK combination.
-func (c *Client) QueryAll(PK string, skCondition SortKeyCondition, SK string, values interface{}) error {
-	iter, err := c.Query(PK, skCondition, SK)
+// QueryAll returns all items from the table under a given PK + SK filter combination.
+func (c *Client) QueryAll(PK string, SK *SortKeyFilter, values interface{}) error {
+	iter, err := c.Query(PK, SK)
 	if err != nil {
 		return err
 	}
@@ -32,12 +33,12 @@ func (c *Client) QueryAll(PK string, skCondition SortKeyCondition, SK string, va
 }
 
 /*
-Query the table for results under a given PK + skCondition + SK combination.
+Query the table for results under a given PK + SK filter combination.
 Performing this call will not send any subsequent requests to DynamoDB, to perform the requests,
 clients need to use the Query iterator and its "HasNext" and "Next" operations.
 */
-func (c *Client) Query(PK string, skCondition SortKeyCondition, SK string) (*QueryIterator, error) {
-	req, err := buildReq(c.table, PK, skCondition, SK)
+func (c *Client) Query(PK string, SK *SortKeyFilter) (*QueryIterator, error) {
+	req, err := buildReq(c.table, PK, SK)
 	if err != nil {
 		return nil, err
 	}
@@ -73,6 +74,12 @@ func (q *QueryIterator) Next(values interface{}) error {
 	return nil
 }
 
+// SortKeyFilter defines a condition and a value for a sort key.
+type SortKeyFilter struct {
+	Condition query.SortKeyCondition
+	Value     string
+}
+
 func (q *QueryIterator) next() ([]map[string]types.AttributeValue, error) {
 	result, err := q.paginator.NextPage(context.Background())
 	if err != nil {
@@ -88,14 +95,26 @@ func newIterator(paginator *dynamodb.QueryPaginator) *QueryIterator {
 	}
 }
 
-func buildReq(table, PK string, skCondition SortKeyCondition, SK string) (*dynamodb.QueryInput, error) {
+func buildReq(table, PK string, SK *SortKeyFilter) (*dynamodb.QueryInput, error) {
 	exp := expression.NewBuilder()
 	keyCondition := expression.Key(consts.PK).Equal(expression.Value(PK))
-	switch skCondition {
-	case BeginsWith:
-		keyCondition = keyCondition.And(expression.Key(consts.SK).BeginsWith(SK))
-	default:
-		return nil, errors.New("unimplemented sk condition type")
+	if SK != nil {
+		switch SK.Condition {
+		case query.BeginsWith:
+			keyCondition = keyCondition.And(expression.Key(consts.SK).BeginsWith(SK.Value))
+		case query.Equals:
+			keyCondition = keyCondition.And(expression.Key(consts.SK).Equal(expression.Value(SK.Value)))
+		case query.GreaterThan:
+			keyCondition = keyCondition.And(expression.Key(consts.SK).GreaterThan(expression.Value(SK.Value)))
+		case query.GreaterThanEqual:
+			keyCondition = keyCondition.And(expression.Key(consts.SK).GreaterThanEqual(expression.Value(SK.Value)))
+		case query.LessThan:
+			keyCondition = keyCondition.And(expression.Key(consts.SK).LessThan(expression.Value(SK.Value)))
+		case query.LessThanEqual:
+			keyCondition = keyCondition.And(expression.Key(consts.SK).LessThanEqual(expression.Value(SK.Value)))
+		default:
+			return nil, errors.New("unimplemented sk condition type")
+		}
 	}
 
 	exp = exp.WithKeyCondition(keyCondition)
@@ -112,9 +131,3 @@ func buildReq(table, PK string, skCondition SortKeyCondition, SK string) (*dynam
 		KeyConditionExpression:    spec.KeyCondition(),
 	}, nil
 }
-
-type SortKeyCondition string
-
-const (
-	BeginsWith SortKeyCondition = "BEGINS_WITH"
-)
