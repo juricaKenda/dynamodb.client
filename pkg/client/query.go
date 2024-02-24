@@ -2,14 +2,34 @@ package client
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/juricaKenda/dynamodb.client/pkg/client/consts"
 )
+
+// QueryAll returns all items from the table under a given PK + skCondition + SK combination.
+func (c *Client) QueryAll(PK string, skCondition SortKeyCondition, SK string, values interface{}) error {
+	iter, err := c.Query(PK, skCondition, SK)
+	if err != nil {
+		return err
+	}
+
+	allItems := make([]map[string]types.AttributeValue, 0)
+	for iter.HasNext() {
+		items, err := iter.next()
+		if err != nil {
+			return err
+		}
+
+		allItems = append(allItems, items...)
+	}
+
+	return attributevalue.UnmarshalListOfMaps(allItems, values)
+}
 
 /*
 Query the table for results under a given PK + skCondition + SK combination.
@@ -42,22 +62,24 @@ It accepts a single argument, "values", which is an address for an array of expe
 Any values returned from DynamoDB will be marshalled into this address.
 */
 func (q *QueryIterator) Next(values interface{}) error {
-	result, err := q.paginator.NextPage(context.Background())
+	items, err := q.next()
 	if err != nil {
 		return err
 	}
 
-	if len(result.Items) == 0 {
-		if err = json.Unmarshal([]byte("[]"), values); err != nil {
-			return err
-		}
-		return nil
-	}
-
-	if err = attributevalue.UnmarshalListOfMaps(result.Items, values); err != nil {
+	if err = attributevalue.UnmarshalListOfMaps(items, values); err != nil {
 		return nil
 	}
 	return nil
+}
+
+func (q *QueryIterator) next() ([]map[string]types.AttributeValue, error) {
+	result, err := q.paginator.NextPage(context.Background())
+	if err != nil {
+		return nil, err
+	}
+
+	return result.Items, nil
 }
 
 func newIterator(paginator *dynamodb.QueryPaginator) *QueryIterator {
