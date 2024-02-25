@@ -7,14 +7,17 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/juricaKenda/dynamodb.client/pkg/client/consts"
+	"strconv"
 )
 
 /*
-Set item under a given PK + SK combination. If an item already exists, it will be overwritten with new values.
+Put item under a given PK + SK combination. If an item already exists, it will be overwritten with new values.
 The `input` must have json tags in order to be properly processed and stored.
 It also MUST NOT contain any of the following tags {"PK", "SK"} as those are reserved by the library.
+
+Use opts to pass optional parameters to the Put method.
 */
-func (c *Client) Set(PK, SK string, input interface{}) error {
+func (c *Client) Put(PK, SK string, input interface{}, opts ...func(options *PutOptions)) error {
 	dynamoModel, err := attributevalue.MarshalMap(input)
 	if err != nil {
 		return err
@@ -29,8 +32,34 @@ func (c *Client) Set(PK, SK string, input interface{}) error {
 		Item:      dynamoModel,
 	}
 
+	options := &PutOptions{}
+	for _, opt := range opts {
+		opt(options)
+	}
+
+	if options.TTL != nil {
+		request.Item[consts.TTL] = &types.AttributeValueMemberN{Value: strconv.FormatInt(*options.TTL, 10)}
+	}
+
 	_, err = c.dynamo.PutItem(context.Background(), request)
 	return err
+}
+
+// PutOptions is a type that can be used to pass optional parameters to the Put method
+type PutOptions struct {
+	/*
+			TTL is a time-to-live value in epoch seconds. Note, TTL needs to be enabled on the table in order to work as expected.
+		Until enabled, it behaves as a regular attribute. Additionally, see official DynamoDB documentation for more details.
+	*/
+	TTL *int64
+}
+
+// TTL is a functional option that can be used to pass time-to-live value to the Put method
+func TTL(expireAt int64) func(options *PutOptions) {
+	return func(options *PutOptions) {
+		options.TTL = &expireAt
+	}
+
 }
 
 /*
